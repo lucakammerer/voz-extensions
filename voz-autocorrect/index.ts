@@ -100,9 +100,6 @@ export default defineExtension((voz) => {
     );
 
   voz.on("beforeInsert", ({ text }) => ({ text: apply(text) }));
-  voz.events.on<{ text: string }>("meeting:transcript", (transcript) => {
-    transcript.text = apply(transcript.text);
-  });
 
   async function learn(dictated: string, notify: (text: string) => void) {
     const watch = Bun.spawn([watcher, "120"], { stdin: new Blob([dictated]), stdout: "pipe", stderr: "ignore" });
@@ -125,7 +122,7 @@ export default defineExtension((voz) => {
       const to = settings.confirm ? await confirmedByClaude(pair, candidate.count, candidate.kept, candidate.example) : pair.to;
       if (!to) {
         learned.rejected.push(pair);
-        voz.log(`Rejected ${pair.from} → ${pair.to}`);
+        console.log(`Rejected ${pair.from} → ${pair.to}`);
         continue;
       }
       learned.rules.push({ from: pair.from, to });
@@ -135,7 +132,8 @@ export default defineExtension((voz) => {
     rules = compile([...parsePairs(settings.pairs), ...learned.rules]);
   }
 
-  voz.on("afterInsert", ({ text }, ctx) => {
-    if (settings.learn) learn(text, ctx.notify).catch((error) => voz.log(`Learning failed: ${error}`));
+  // Awaited so ctx.notify still reaches the user when a rule is learned minutes later
+  voz.on("afterInsert", async ({ text }, ctx) => {
+    if (settings.learn) await learn(text, ctx.notify).catch((error) => console.log(`Learning failed: ${error}`));
   });
 });
