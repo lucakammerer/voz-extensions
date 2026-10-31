@@ -2,7 +2,7 @@
 
 A [Voz](https://github.com/Joelheile/voz) extension that fixes words Voz keeps mishearing, and learns those fixes from you.
 
-After each dictation it watches the text field until you send or clear it. When you correct a word, say `Phenom` to `Finom`, it remembers the pair. Once you made the same correction twice and hardly ever kept the word as dictated, it asks Claude Code whether this sounds like a recognition error or like you changed your mind. Recognition errors become a rule and Voz shows `Learned: phenom → Finom`. Later dictations, and transcripts from [voz-meeting](https://www.npmjs.com/package/voz-meeting), get the fix before they are typed.
+After each dictation it watches the text field until you send or clear it. When you correct a word, say `Phenom` to `Finom`, it remembers the pair. Once you made the same correction twice and hardly ever kept the word as dictated, it asks Claude Code whether this sounds like a recognition error or like you changed your mind. Recognition errors become a rule and Voz shows `Learned: phenom → Finom`. Later dictations get the fix before they are typed.
 
 Rules replace whole words only. Unlike Voz's dictionary, they never bias the speech model, so they cannot turn similar sounding words into your names.
 
