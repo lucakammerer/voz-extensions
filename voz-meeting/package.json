@@ -12,7 +12,7 @@
   },
   "os": ["darwin"],
   "cpu": ["arm64"],
-  "voz": { "apiVersion": 1 },
+  "voz": { "apiVersion": 4 },
   "files": ["index.ts", "meeting-rec", "meeting-rec.swift"],
   "devDependencies": { "@types/bun": "latest" }
 }

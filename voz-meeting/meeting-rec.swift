@@ -1,5 +1,5 @@
 // Records the microphone and all system audio until SIGINT or SIGTERM, then mixes both into one 16 kHz mono m4a.
-// usage: meeting-rec <out.m4a>
+// usage: meeting-rec <out.m4a> | meeting-rec --watch
 import AVFoundation
 import CoreAudio
 
@@ -72,6 +72,38 @@ func mix(_ first: URL, _ second: URL, into output: URL) {
 }
 
 let arguments = CommandLine.arguments
+// `meeting-rec --watch` prints 1 or 0 whenever any app starts or stops using the default microphone, until stdin closes
+if arguments.count == 2, arguments[1] == "--watch" {
+  let system = AudioObjectID(kAudioObjectSystemObject)
+  let queue = DispatchQueue(label: "meeting-rec")
+  var running = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+  var defaultInput = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+  var device = AudioObjectID(kAudioObjectUnknown)
+  var last = ""
+  let emit = {
+    var value: UInt32 = 0
+    var size = UInt32(MemoryLayout<UInt32>.size)
+    let line = AudioObjectGetPropertyData(device, &running, 0, nil, &size, &value) == noErr && value != 0 ? "1\n" : "0\n"
+    if line != last { FileHandle.standardOutput.write(line.data(using: .utf8)!) }
+    last = line
+  }
+  let report: AudioObjectPropertyListenerBlock = { _, _ in emit() }
+  // Follow the default microphone when it changes, such as when AirPods connect
+  let follow = {
+    if device != kAudioObjectUnknown { AudioObjectRemovePropertyListenerBlock(device, &running, queue, report) }
+    device = property(system, kAudioHardwarePropertyDefaultInputDevice, AudioObjectID(kAudioObjectUnknown))
+    if device != kAudioObjectUnknown { AudioObjectAddPropertyListenerBlock(device, &running, queue, report) }
+    emit()
+  }
+  check(AudioObjectAddPropertyListenerBlock(system, &defaultInput, queue) { _, _ in follow() }, "Watching the default microphone")
+  queue.async(execute: follow)
+  // Voz restarting extensions closes stdin, so the watcher never outlives them
+  Thread {
+    while readLine() != nil {}
+    exit(0)
+  }.start()
+  dispatchMain()
+}
 guard arguments.count == 2 else { fail("usage: meeting-rec <out.m4a>") }
 let output = URL(fileURLWithPath: arguments[1])
 let micURL = output.appendingPathExtension("mic.caf")
